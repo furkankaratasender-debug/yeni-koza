@@ -1,29 +1,27 @@
-import { useState } from "react";
-import { useAuth } from "./shared/hooks/useAuth";
-import { S } from "./shared/lib/theme";
+import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 
-import { AuthPage }     from "./portal/AuthPage";
-import { ProfileSetup } from "./portal/ProfileSetup";
-import { Navbar }       from "./portal/Navbar";
-import { Sidebar }      from "./portal/Sidebar";
-import { HomePage }     from "./portal/HomePage";
-import { AdminPage }    from "./portal/AdminPage";
+import { useAuth }       from "./shared/hooks/useAuth";
+import { S }             from "./shared/lib/theme";
 
-import { UrunYorumlari } from "./apps/urun-yorumlari/UrunYorumlari";
-import { Sergileme }     from "./apps/sergileme/Sergileme";
+import { AuthPage }      from "./portal/AuthPage";
+import { ProfileSetup }  from "./portal/ProfileSetup";
+import { PortalHome }    from "./portal/PortalHome";
+import { AppShell }      from "./portal/AppShell";
+import { AdminPage }     from "./portal/AdminPage";
+import { ChangePasswordModal, EditProfileModal } from "./portal/UserModals";
 
-export default function App() {
-  const { authUser, profile, loading, reloadProfile } = useAuth();
-  const [page, setPage]               = useState("home");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+import { supabase }      from "./shared/lib/supabase";
+import { APPS, getApp }  from "./portal/appRegistry";
 
-  // Global CSS
-  useState(() => {
+/* ---------- Global CSS install ---------- */
+function useGlobalStyles() {
+  useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
       * { box-sizing: border-box !important; }
       html { overflow-x: hidden; width: 100%; }
-      body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; max-width: 100vw; }
+      body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; max-width: 100vw; background: ${S.bg}; }
       input, textarea, select { font-size: 16px !important; }
       .hamburger { display: none !important; }
       .main-layout { display: flex; height: calc(100vh - 52px); overflow: hidden; }
@@ -43,12 +41,52 @@ export default function App() {
         .filter-bar { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
         .filter-bar::-webkit-scrollbar { display: none; }
         .home-grid { grid-template-columns: 1fr !important; }
+        .back-label { display: none; }
+        .user-chip { max-width: 80px !important; }
       }
     `;
     document.head.appendChild(style);
-  });
+    return () => document.head.removeChild(style);
+  }, []);
+}
 
-  // Loading
+/* ---------- App route loader ---------- */
+function AppRouteLoader({ profile, ...shellProps }) {
+  const { appId } = useParams();
+  const app = getApp(appId);
+
+  // Bilinmeyen app → portala dön
+  if (!app) return <Navigate to="/" replace />;
+
+  // Admin-only kontrolü
+  if (app.adminOnly && profile?.role !== "admin") return <Navigate to="/" replace />;
+
+  const Component = app.component;
+  return (
+    <AppShell app={app} profile={profile} {...shellProps}>
+      <Component profile={profile} />
+    </AppShell>
+  );
+}
+
+/* ---------- Admin route (kayıtlı app değil, sabit) ---------- */
+function AdminRoute({ profile, ...shellProps }) {
+  if (profile?.role !== "admin") return <Navigate to="/" replace />;
+  const adminApp = { id: "admin", name: "Kullanıcı Yönetimi", icon: "👥", color: "#a855f7" };
+  return (
+    <AppShell app={adminApp} profile={profile} {...shellProps}>
+      <AdminPage />
+    </AppShell>
+  );
+}
+
+/* ---------- Root ---------- */
+function Root() {
+  useGlobalStyles();
+  const { authUser, profile, loading, reloadProfile } = useAuth();
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+
   if (loading) {
     return (
       <div style={{ fontFamily: "'Segoe UI',sans-serif", background: S.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -57,48 +95,46 @@ export default function App() {
     );
   }
 
-  // Not logged in
   if (!authUser) return <AuthPage />;
+  if (!profile || !profile.store) return <ProfileSetup authUser={authUser} onComplete={reloadProfile} />;
 
-  // Profile incomplete
-  if (!profile || !profile.store) {
-    return <ProfileSetup authUser={authUser} onComplete={reloadProfile} />;
-  }
+  const shellProps = {
+    onLogout: () => supabase.auth.signOut(),
+    onOpenSettings: () => setShowChangePw(true),
+    onOpenEditProfile: () => setShowEditProfile(true),
+  };
 
-  // Main app
   return (
-    <div style={{ fontFamily: "'Segoe UI',sans-serif", background: S.bg, minHeight: "100vh", fontSize: 14, color: S.text }}>
-      <Navbar
-        profile={profile}
-        onMenuToggle={() => setSidebarOpen(o => !o)}
-        onProfileUpdated={reloadProfile}
-      />
-
-      <div className="main-layout">
-        {/* Mobile overlay */}
-        {sidebarOpen && (
-          <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 99, top: 52 }} />
-        )}
-
-        {/* Portal sidebar (only for home / admin / gallery views) */}
-        {page !== "products" && (
-          <Sidebar
-            page={page}
-            onNavigate={setPage}
-            isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
+    <>
+      <Routes>
+        <Route path="/" element={
+          <PortalHome
             profile={profile}
+            onLogout={shellProps.onLogout}
+            onOpenSettings={shellProps.onOpenSettings}
+            onOpenEditProfile={shellProps.onOpenEditProfile}
           />
-        )}
+        } />
+        <Route path="/admin" element={<AdminRoute profile={profile} {...shellProps} />} />
+        <Route path="/:appId" element={<AppRouteLoader profile={profile} {...shellProps} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
 
-        {/* App router */}
-        <div className="content-area">
-          {page === "home"     && <HomePage profile={profile} onNavigate={setPage} />}
-          {page === "products" && <UrunYorumlari profile={profile} />}
-          {page === "gallery"  && <Sergileme profile={profile} />}
-          {page === "admin"    && profile.role === "admin" && <AdminPage />}
-        </div>
-      </div>
-    </div>
+      <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
+      <EditProfileModal
+        open={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+        profile={profile}
+        onSaved={reloadProfile}
+      />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Root />
+    </BrowserRouter>
   );
 }
