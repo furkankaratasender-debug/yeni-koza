@@ -24,13 +24,19 @@ export function AppShell({ app, profile, onLogout, onOpenSettings, onOpenEditPro
           <button
             onClick={() => navigate("/")}
             style={{
-              ...btnSecondary, padding: "5px 12px", fontSize: 12,
-              display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+              ...btnSecondary, padding: "5px 10px", fontSize: 12,
+              display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
             }}
             title="Portal'a dön"
           >
             <span style={{ fontSize: 14 }}>←</span>
-            <span className="back-label">Yeni Koza</span>
+            <img
+              src="/logo.png"
+              alt="Yeni Koza"
+              style={{ height: 20, width: "auto" }}
+              onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "inline"; }}
+            />
+            <span className="back-label" style={{ display: "none" }}>Yeni Koza</span>
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <span style={{ fontSize: 18, flexShrink: 0 }}>{app.icon}</span>

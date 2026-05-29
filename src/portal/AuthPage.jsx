@@ -67,7 +67,13 @@ export function AuthPage() {
     <div style={{ fontFamily: "'Segoe UI',sans-serif", background: S.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div style={{ width: "min(400px, 100%)", background: S.card, borderRadius: 16, padding: 32, border: `1.5px solid ${S.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 36, marginBottom: 10 }}>🏪</div>
+          <img
+            src="/logo.png"
+            alt="Yeni Koza"
+            style={{ height: 56, width: "auto", marginBottom: 14 }}
+            onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "block"; }}
+          />
+          <div style={{ fontSize: 36, marginBottom: 10, display: "none" }}>🏪</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: S.text }}>Yeni Koza</div>
           <div style={{ fontSize: 13, color: S.textMuted, marginTop: 4 }}>Mağaza Yönetim Sistemi</div>
         </div>
