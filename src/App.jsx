@@ -1,122 +1,104 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import { useAuth } from "./shared/hooks/useAuth";
+import { S } from "./shared/lib/theme";
 
-function App() {
-  const [count, setCount] = useState(0)
+import { AuthPage }     from "./portal/AuthPage";
+import { ProfileSetup } from "./portal/ProfileSetup";
+import { Navbar }       from "./portal/Navbar";
+import { Sidebar }      from "./portal/Sidebar";
+import { HomePage }     from "./portal/HomePage";
+import { AdminPage }    from "./portal/AdminPage";
 
+import { UrunYorumlari } from "./apps/urun-yorumlari/UrunYorumlari";
+import { Sergileme }     from "./apps/sergileme/Sergileme";
+
+export default function App() {
+  const { authUser, profile, loading, reloadProfile } = useAuth();
+  const [page, setPage]               = useState("home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Global CSS
+  useState(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      * { box-sizing: border-box !important; }
+      html { overflow-x: hidden; width: 100%; }
+      body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; max-width: 100vw; }
+      input, textarea, select { font-size: 16px !important; }
+      .hamburger { display: none !important; }
+      .main-layout { display: flex; height: calc(100vh - 52px); overflow: hidden; }
+      .content-area { flex: 1; overflow-y: auto; overflow-x: hidden; min-width: 0; max-width: 100%; }
+      .sidebar { width: 260px; flex-shrink: 0; overflow-y: auto; }
+      @media (max-width: 768px) {
+        .hamburger { display: flex !important; align-items: center; justify-content: center; }
+        .main-layout { display: block; height: auto; }
+        .sidebar { position: fixed !important; left: -100vw; top: 52px; height: calc(100vh - 52px); transition: left 0.25s; box-shadow: 4px 0 20px rgba(0,0,0,0.5); z-index: 100; width: 80vw; max-width: 260px; overflow-y: auto; }
+        .sidebar.sidebar-open { left: 0 !important; }
+        .content-area { padding: 12px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }
+        .admin-table { display: none !important; }
+        .admin-cards { display: flex !important; flex-direction: column; gap: 10px; }
+        .catalog-grid { grid-template-columns: 1fr !important; }
+        .comment-grid { grid-template-columns: 1fr !important; }
+        .display-grid { grid-template-columns: 1fr 1fr !important; }
+        .filter-bar { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+        .filter-bar::-webkit-scrollbar { display: none; }
+        .home-grid { grid-template-columns: 1fr !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  });
+
+  // Loading
+  if (loading) {
+    return (
+      <div style={{ fontFamily: "'Segoe UI',sans-serif", background: S.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: S.textMuted, fontSize: 14 }}>Yükleniyor...</div>
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!authUser) return <AuthPage />;
+
+  // Profile incomplete
+  if (!profile || !profile.store) {
+    return <ProfileSetup authUser={authUser} onComplete={reloadProfile} />;
+  }
+
+  // Main app
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ fontFamily: "'Segoe UI',sans-serif", background: S.bg, minHeight: "100vh", fontSize: 14, color: S.text }}>
+      <Navbar
+        profile={profile}
+        onMenuToggle={() => setSidebarOpen(o => !o)}
+        onProfileUpdated={reloadProfile}
+      />
 
-      <div className="ticks"></div>
+      <div className="main-layout">
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 99, top: 52 }} />
+        )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* Portal sidebar (only for home / admin / gallery views) */}
+        {page !== "products" && (
+          <Sidebar
+            page={page}
+            onNavigate={setPage}
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            profile={profile}
+          />
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {/* App router */}
+        <div className="content-area">
+          {page === "home"     && <HomePage profile={profile} onNavigate={setPage} />}
+          {page === "products" && <UrunYorumlari profile={profile} />}
+          {page === "gallery"  && <Sergileme profile={profile} />}
+          {page === "admin"    && profile.role === "admin" && <AdminPage />}
+        </div>
+      </div>
+    </div>
+  );
 }
-
-export default App
