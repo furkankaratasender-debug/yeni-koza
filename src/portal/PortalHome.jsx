@@ -51,7 +51,6 @@ export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfil
             onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "inline"; }}
           />
           <span style={{ fontSize: 22, display: "none" }}>🏪</span>
-          <span style={{ fontSize: 16, fontWeight: 700, color: L.text, letterSpacing: -0.2 }}>Yeni Koza</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{
