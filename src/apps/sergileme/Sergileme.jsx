@@ -75,7 +75,7 @@ export function Sergileme({ profile }) {
   }
 
   return (
-    <div style={{ padding: 24, overflowY: "auto", height: "calc(100vh - 52px)" }}>
+    <div style={{ padding: 24, overflowY: "auto", height: "calc(100vh - 54px)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: S.text }}>🖼️ Sergileme Galerisi</div>

@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { S } from "../shared/lib/theme";
 
-// App üst barı için yumuşak koyu/orta ton (logo ve ikonların net okunabileceği)
+// App üst barı için yumuşak koyu/orta ton
 const BAR = {
-  bg:          "#2d3548",   // S.card'dan biraz daha açık
+  bg:          "#2d3548",
   border:      "#404a63",
   text:        "#f1f5f9",
   textMuted:   "#cbd5e1",
@@ -24,19 +24,23 @@ const barBtn = {
 
 export function AppShell({ app, profile, onLogout, onOpenSettings, onOpenEditProfile, children }) {
   const navigate = useNavigate();
+  const firstName = profile?.name?.split(" ")[0] || "";
 
   return (
     <div style={{ fontFamily: "'Segoe UI',sans-serif", background: S.bg, minHeight: "100vh", color: S.text }}>
-      {/* App top bar — açık koyu */}
-      <div style={{
-        background: BAR.bg, padding: "0 14px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        height: 54, boxShadow: "0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.25)",
-        position: "sticky", top: 0, zIndex: 50,
-        borderBottom: `1px solid ${BAR.border}`, width: "100%",
-      }}>
+      {/* App top bar */}
+      <div
+        className="appshell-bar"
+        style={{
+          background: BAR.bg, padding: "0 14px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          height: 54, boxShadow: "0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.25)",
+          position: "sticky", top: 0, zIndex: 50,
+          borderBottom: `1px solid ${BAR.border}`, width: "100%", gap: 8,
+        }}
+      >
         {/* Left: portal back + app name */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: 1 }}>
+        <div className="appshell-left" style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: 1 }}>
           <button
             onClick={() => navigate("/")}
             style={{
@@ -47,16 +51,16 @@ export function AppShell({ app, profile, onLogout, onOpenSettings, onOpenEditPro
             onMouseEnter={e => e.currentTarget.style.background = BAR.hoverBg}
             onMouseLeave={e => e.currentTarget.style.background = "transparent"}
           >
-            <span style={{ fontSize: 14, color: BAR.text }}>←</span>
+            <span style={{ fontSize: 16, color: BAR.text, lineHeight: 1 }}>←</span>
             <img
+              className="appshell-logo"
               src="/logo.png"
               alt="Yeni Koza"
               style={{ height: 18, width: "auto", filter: "brightness(0) invert(1)" }}
-              onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "inline"; }}
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
-            <span className="back-label" style={{ display: "none", color: BAR.text, fontSize: 12 }}>Yeni Koza</span>
           </button>
-          <div style={{ width: 1, height: 24, background: BAR.border, flexShrink: 0 }} />
+          <div className="appshell-divider" style={{ width: 1, height: 24, background: BAR.border, flexShrink: 0 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <span style={{ fontSize: 18, flexShrink: 0 }}>{app.icon}</span>
             <span style={{
@@ -73,7 +77,10 @@ export function AppShell({ app, profile, onLogout, onOpenSettings, onOpenEditPro
             padding: "4px 12px", fontSize: 12, fontWeight: 600,
             border: `1px solid ${BAR.border}`,
             maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>{profile?.name}</div>
+          }}>
+            <span className="user-fullname">{profile?.name}</span>
+            <span className="user-firstname" style={{ display: "none" }}>{firstName}</span>
+          </div>
           <button onClick={onOpenSettings} title="Şifre Değiştir" style={{ ...barBtn, padding: "5px 9px", fontSize: 14 }}
             onMouseEnter={e => e.currentTarget.style.background = BAR.hoverBg}
             onMouseLeave={e => e.currentTarget.style.background = "transparent"}>🔑</button>

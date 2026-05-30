@@ -53,10 +53,11 @@ export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfil
           <span style={{ fontSize: 22, display: "none" }}>🏪</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
+          <div className="portal-user-chip" style={{
             background: L.accentLight, color: L.accent, borderRadius: 20,
             padding: "5px 12px", fontSize: 12, fontWeight: 600,
             border: `1px solid ${L.accent}22`,
+            maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>{profile?.name}</div>
           <button onClick={onOpenSettings} title="Şifre Değiştir" style={{ ...btnLight, padding: "6px 10px", fontSize: 14 }}>🔑</button>
           <button onClick={onOpenEditProfile} title="Profili Düzenle" style={{ ...btnLight, padding: "6px 10px", fontSize: 12 }}>✏️</button>

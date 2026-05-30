@@ -70,7 +70,7 @@ export function AuthPage() {
           <img
             src="/logo.png"
             alt="Yeni Koza"
-            style={{ height: 56, width: "auto", marginBottom: 14 }}
+            style={{ height: 44, width: "auto", marginBottom: 14, filter: "brightness(0) invert(1)" }}
             onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "block"; }}
           />
           <div style={{ fontSize: 36, marginBottom: 10, display: "none" }}>🏪</div>

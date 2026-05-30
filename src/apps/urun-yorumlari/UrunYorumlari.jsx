@@ -208,9 +208,9 @@ export function UrunYorumlari({ profile }) {
   }
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 52px)", overflow: "hidden" }}>
+    <div className="product-app-container" style={{ display: "flex", height: "calc(100vh - 54px)", overflow: "hidden" }}>
       {/* Product tree sidebar */}
-      <div style={{ width: 260, flexShrink: 0, background: S.sidebar, borderRight: `1.5px solid ${S.border}`, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      <div className="product-tree-sidebar" style={{ width: 260, flexShrink: 0, background: S.sidebar, borderRight: `1.5px solid ${S.border}`, overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px 8px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: S.textDim }}>Ürünler</div>
           <div style={{ display: "flex", gap: 6 }}>
@@ -274,12 +274,12 @@ export function UrunYorumlari({ profile }) {
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: 24, minWidth: 0 }}>
+      <div className="product-main-content" style={{ flex: 1, overflowY: "auto", padding: 24, minWidth: 0 }}>
         {!selectedProduct ? (
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: S.text }}>📦 Ürün Yorumları</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: S.text }}>Ürünler</div>
                 <div style={{ fontSize: 13, color: S.textMuted, marginTop: 3 }}>Etiketi tarayın veya manuel ürün ekleyin</div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

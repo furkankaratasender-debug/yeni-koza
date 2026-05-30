@@ -43,6 +43,22 @@ function useGlobalStyles() {
         .home-grid { grid-template-columns: 1fr !important; }
         .back-label { display: none; }
         .user-chip { max-width: 80px !important; }
+
+        /* AppShell mobil: logo + divider gizle, daha kompakt */
+        .appshell-logo { display: none !important; }
+        .appshell-divider { display: none !important; }
+        .appshell-bar { gap: 6px !important; padding: 0 8px !important; }
+        .appshell-left { gap: 8px !important; }
+        .user-fullname { display: none !important; }
+        .user-firstname { display: inline !important; }
+
+        /* PortalHome navbar mobil: user chip dar */
+        .portal-user-chip { max-width: 90px !important; }
+
+        /* Ürün Yorumları mobil: sidebar gizle, content tam genişlik */
+        .product-app-container { display: block !important; height: auto !important; overflow: visible !important; }
+        .product-tree-sidebar { display: none !important; }
+        .product-main-content { padding: 14px !important; height: auto !important; }
       }
     `;
     document.head.appendChild(style);
