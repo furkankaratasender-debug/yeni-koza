@@ -49,8 +49,6 @@ function useGlobalStyles() {
         .appshell-divider { display: none !important; }
         .appshell-bar { gap: 6px !important; padding: 0 10px !important; }
         .appshell-left { gap: 8px !important; }
-        .appshell-username { display: none !important; }
-        .appshell-chevron { display: none !important; }
         .user-fullname { display: none !important; }
         .user-firstname { display: inline !important; }
 
