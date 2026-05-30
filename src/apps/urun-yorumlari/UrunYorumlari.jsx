@@ -3,7 +3,7 @@ import { supabase } from "../../shared/lib/supabase";
 import { S, inputStyle, btnPrimary, btnSecondary } from "../../shared/lib/theme";
 import { REYONLAR, URUN_GRUPLARI, MARKALAR, KATEGORILER, MAGAZALAR, KAT_BORDER } from "../../shared/lib/constants";
 import { fmt } from "../../shared/lib/utils";
-import { Badge, SearchSelect, SimpleSelect } from "../../shared/components";
+import { Badge, SearchSelect, SimpleSelect, ProductScanner } from "../../shared/components";
 
 async function loadCatalogFiltered(field, reyon, grup) {
   let q = supabase.from("catalog_products").select(field);
@@ -45,6 +45,12 @@ export function UrunYorumlari({ profile }) {
   const [openG, setOpenG]                   = useState({});
   const [openM, setOpenM]                   = useState({});
 
+  // Scanner & product photo
+  const [showScanner, setShowScanner]       = useState(false);
+  const [scannerMode, setScannerMode]       = useState("smart"); // "smart" (main page) or "fill" (add modal)
+  const [newProdPhoto, setNewProdPhoto]     = useState(null);
+  const [newProdPhotoPreview, setNewProdPhotoPreview] = useState(null);
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2800); };
 
   useEffect(() => { loadData(); }, []);
@@ -84,18 +90,84 @@ export function UrunYorumlari({ profile }) {
       showToast("⚠️ Zorunlu alanları doldurun."); return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("products").insert({
+    const { data: prodData, error } = await supabase.from("products").insert({
       code: newProd.code, description: newProd.desc || null,
       reyon: newProd.reyon, urun_grubu: newProd.grup, marka: newProd.marka,
       created_by: profile.id,
-    });
+    }).select().single();
+    if (error) { setSubmitting(false); showToast("❌ " + error.message); return; }
+
+    // Ürün fotoğrafı varsa yükle
+    if (newProdPhoto && prodData) {
+      const ext = newProdPhoto.name.split(".").pop();
+      const path = `products/${Date.now()}_${profile.id}.${ext}`;
+      const { data: up } = await supabase.storage.from("Photos").upload(path, newProdPhoto, { upsert: true });
+      if (up) {
+        const { data: { publicUrl } } = supabase.storage.from("Photos").getPublicUrl(path);
+        await supabase.from("photos").insert({
+          product_id: prodData.id, comment_id: null,
+          user_id: profile.id, user_name: profile.name, store: profile.store, url: publicUrl,
+        });
+      }
+    }
+
     setSubmitting(false);
-    if (error) { showToast("❌ " + error.message); return; }
     showToast("✅ Ürün eklendi!");
     setShowAddProd(false);
     setNewProd({ code: "", desc: "", reyon: "", grup: "", marka: "" });
+    setNewProdPhoto(null); setNewProdPhotoPreview(null);
     setManualCode(false); setCatalogCodes([]); setFilteredGruplar([]); setFilteredMarkalar([]);
     loadData();
+    // Eklenen ürüne otomatik geç
+    if (prodData) setSelectedProductId(prodData.id);
+  }
+
+  /**
+   * Scanner'dan kod geldiğinde akıllı yönlendirme:
+   * 1. products'ta varsa → o ürüne git
+   * 2. catalog_products'ta varsa → ekleme modalini önceden doldur
+   * 3. Hiçbir yerde yoksa → manuel ekleme modu, kod önceden dolu
+   */
+  async function handleScannedCode(code) {
+    // 1. Mevcut ürünlerde ara
+    const existing = products.find(p => p.code.toUpperCase() === code.toUpperCase());
+    if (existing) {
+      setSelectedProductId(existing.id);
+      showToast(`✅ Ürün bulundu: ${code}`);
+      return;
+    }
+    // 2. Katalogda ara
+    const { data: cat } = await supabase
+      .from("catalog_products")
+      .select("*")
+      .eq("code", code)
+      .maybeSingle();
+
+    if (cat) {
+      // Bağımlı dropdownları doldur (grup/marka listeleri)
+      const gruplar = await loadCatalogFiltered("urun_grubu", cat.reyon, null);
+      const markalar = await loadCatalogFiltered("marka", cat.reyon, cat.urun_grubu);
+      const codes = await loadCatalogCodes(cat.reyon, cat.urun_grubu, cat.marka);
+      setFilteredGruplar(gruplar);
+      setFilteredMarkalar(markalar);
+      setCatalogCodes(codes);
+      setNewProd({
+        code: cat.code, desc: "",
+        reyon: cat.reyon, grup: cat.urun_grubu, marka: cat.marka,
+      });
+      setManualCode(false);
+      setShowAddProd(true);
+      showToast(`📋 Katalogda bulundu — bilgiler dolduruldu`);
+    } else {
+      // Manuel mod
+      setNewProd({ code, desc: "", reyon: "", grup: "", marka: "" });
+      setManualCode(true);
+      setCatalogCodes([]);
+      setFilteredGruplar([]);
+      setFilteredMarkalar([]);
+      setShowAddProd(true);
+      showToast(`⚠️ Katalogda yok — bilgileri manuel girin`);
+    }
   }
 
   async function submitComment() {
@@ -131,6 +203,8 @@ export function UrunYorumlari({ profile }) {
   function resetAddProd() {
     setShowAddProd(false); setManualCode(false);
     setCatalogCodes([]); setFilteredGruplar([]); setFilteredMarkalar([]);
+    setNewProd({ code: "", desc: "", reyon: "", grup: "", marka: "" });
+    setNewProdPhoto(null); setNewProdPhotoPreview(null);
   }
 
   return (
@@ -139,7 +213,18 @@ export function UrunYorumlari({ profile }) {
       <div style={{ width: 260, flexShrink: 0, background: S.sidebar, borderRight: `1.5px solid ${S.border}`, overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px 8px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: S.textDim }}>Ürünler</div>
-          <button onClick={() => setShowAddProd(true)} style={{ background: S.accent, color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>+</button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={() => { setScannerMode("smart"); setShowScanner(true); }}
+              title="Etiket Tara"
+              style={{ background: S.accent, color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+            >📷</button>
+            <button
+              onClick={() => setShowAddProd(true)}
+              title="Manuel Ekle"
+              style={{ background: "#16a34a", color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+            >+</button>
+          </div>
         </div>
         {Object.keys(tree).length === 0 && <div style={{ padding: "12px 16px", fontSize: 12, color: S.textDim }}>Henüz ürün yok.</div>}
         {Object.keys(tree).sort().map(reyon => {
@@ -195,11 +280,23 @@ export function UrunYorumlari({ profile }) {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: S.text }}>📦 Ürün Yorumları</div>
-                <div style={{ fontSize: 13, color: S.textMuted, marginTop: 3 }}>Bir ürün seçin veya yeni ürün ekleyin</div>
+                <div style={{ fontSize: 13, color: S.textMuted, marginTop: 3 }}>Etiketi tarayın veya manuel ürün ekleyin</div>
               </div>
-              <button onClick={() => setShowAddProd(true)} style={{ background: "#2d4a2d", color: "#4ade80", border: "1.5px solid #16a34a88", padding: "10px 18px", borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                + Yeni Ürün Ekle
-              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => { setScannerMode("smart"); setShowScanner(true); }}
+                  style={{
+                    background: S.accent, color: "white", border: "none",
+                    padding: "10px 18px", borderRadius: 7, fontSize: 13, fontWeight: 700,
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                  }}
+                >
+                  📷 Etiket Tara
+                </button>
+                <button onClick={() => setShowAddProd(true)} style={{ background: "#2d4a2d", color: "#4ade80", border: "1.5px solid #16a34a88", padding: "10px 18px", borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                  + Yeni Ürün Ekle
+                </button>
+              </div>
             </div>
             <div style={{ position: "relative", marginBottom: 24 }}>
               <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: S.textDim }}>🔍</div>
@@ -214,8 +311,11 @@ export function UrunYorumlari({ profile }) {
               if (products.length === 0) return (
                 <div style={{ textAlign: "center", color: S.textDim, padding: "60px 0" }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
-                  <div style={{ marginBottom: 8, color: S.textMuted }}>Henüz ürün eklenmemiş.</div>
-                  <button onClick={() => setShowAddProd(true)} style={{ ...btnPrimary, marginTop: 8 }}>+ İlk Ürünü Ekle</button>
+                  <div style={{ marginBottom: 16, color: S.textMuted }}>Henüz ürün eklenmemiş.</div>
+                  <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                    <button onClick={() => { setScannerMode("smart"); setShowScanner(true); }} style={{ ...btnPrimary }}>📷 Etiket Tara</button>
+                    <button onClick={() => setShowAddProd(true)} style={{ ...btnSecondary }}>+ Manuel Ekle</button>
+                  </div>
                 </div>
               );
               if (productSearch && filtered.length === 0) return (
@@ -351,7 +451,20 @@ export function UrunYorumlari({ profile }) {
       {showAddProd && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={resetAddProd}>
           <div style={{ background: S.card, borderRadius: 14, padding: 28, width: "min(500px,92vw)", border: `1.5px solid ${S.border}`, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: S.text, marginBottom: 20 }}>➕ Yeni Ürün Ekle</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: S.text }}>➕ Yeni Ürün Ekle</div>
+              <button
+                onClick={() => { setScannerMode("fill"); setShowScanner(true); }}
+                style={{
+                  background: S.accent + "22", color: S.accent,
+                  border: `1px solid ${S.accent}`, padding: "5px 12px",
+                  borderRadius: 6, fontSize: 11, fontWeight: 700,
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                }}
+              >
+                📷 Etiketten Doldur
+              </button>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
               {[["Reyon *", REYONLAR, "reyon", false], ["Ürün Grubu *", filteredGruplar.length ? filteredGruplar : URUN_GRUPLARI, "grup", !newProd.reyon], ["Marka *", filteredMarkalar.length ? filteredMarkalar : MARKALAR, "marka", !newProd.grup]].map(([lbl, opts, key, dis]) => (
                 <div key={key}>
@@ -376,10 +489,50 @@ export function UrunYorumlari({ profile }) {
                 {!manualCode && <div onClick={() => setManualCode(true)} style={{ fontSize: 12, color: S.accent, cursor: "pointer", marginTop: 5 }}>{catalogCodes.length === 0 ? "⚠️ Katalogda bulunamadı — manuel gir" : "Kodumu listede göremiyorum"}</div>}
               </div>
             )}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: S.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Ürün Açıklaması</div>
               <input value={newProd.desc} onChange={e => setNewProd({ ...newProd, desc: e.target.value })} placeholder="Opsiyonel" style={{ ...inputStyle }} />
             </div>
+
+            {/* Ürün Fotoğrafı */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: S.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Ürün Fotoğrafı</div>
+              {newProdPhotoPreview ? (
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  <img src={newProdPhotoPreview} style={{
+                    width: 120, height: 90, objectFit: "cover",
+                    borderRadius: 8, border: `1.5px solid ${S.border}`,
+                  }} />
+                  <button
+                    onClick={() => { setNewProdPhoto(null); setNewProdPhotoPreview(null); }}
+                    style={{
+                      position: "absolute", top: -6, right: -6,
+                      background: "#dc2626", color: "white", border: "none",
+                      borderRadius: "50%", width: 20, height: 20,
+                      cursor: "pointer", fontSize: 12, fontWeight: 700,
+                    }}
+                  >×</button>
+                </div>
+              ) : (
+                <label style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  padding: "10px 16px", background: "#1e40af22",
+                  border: `1.5px solid ${S.accent}77`, borderRadius: 7,
+                  cursor: "pointer", fontSize: 12, fontWeight: 700, color: S.accent,
+                }}>
+                  📷 Ürün Fotoğrafı Çek/Yükle (opsiyonel)
+                  <input
+                    type="file" accept="image/*" capture="environment"
+                    onChange={e => {
+                      const f = e.target.files[0];
+                      if (f) { setNewProdPhoto(f); setNewProdPhotoPreview(URL.createObjectURL(f)); }
+                    }}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              )}
+            </div>
+
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={resetAddProd} style={{ ...btnSecondary }}>İptal</button>
               <button onClick={addProduct} disabled={submitting} style={{ ...btnPrimary, opacity: submitting ? 0.7 : 1 }}>{submitting ? "Ekleniyor..." : "Ekle"}</button>
@@ -387,6 +540,36 @@ export function UrunYorumlari({ profile }) {
           </div>
         </div>
       )}
+
+      {/* Product Scanner */}
+      <ProductScanner
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onCodeDetected={async (code) => {
+          if (scannerMode === "smart") {
+            // Ana sayfa: ürün varsa o sayfaya git, yoksa modal aç
+            await handleScannedCode(code);
+          } else {
+            // Add modal içinden: sadece kodu doldur + kataloğu lookup et
+            const { data: cat } = await supabase.from("catalog_products").select("*").eq("code", code).maybeSingle();
+            if (cat) {
+              const gruplar = await loadCatalogFiltered("urun_grubu", cat.reyon, null);
+              const markalar = await loadCatalogFiltered("marka", cat.reyon, cat.urun_grubu);
+              const codes = await loadCatalogCodes(cat.reyon, cat.urun_grubu, cat.marka);
+              setFilteredGruplar(gruplar);
+              setFilteredMarkalar(markalar);
+              setCatalogCodes(codes);
+              setNewProd({ code: cat.code, desc: newProd.desc, reyon: cat.reyon, grup: cat.urun_grubu, marka: cat.marka });
+              setManualCode(false);
+              showToast(`📋 Katalogdan dolduruldu`);
+            } else {
+              setNewProd({ ...newProd, code });
+              setManualCode(true);
+              showToast(`⚠️ Katalogda yok — diğer alanları manuel gir`);
+            }
+          }
+        }}
+      />
 
       {/* Lightbox */}
       {lightbox && (

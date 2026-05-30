@@ -65,16 +65,8 @@ export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfil
       </div>
 
       {/* Hero */}
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "56px 24px 28px", textAlign: "center" }}>
-        <img
-          src="/logo.png"
-          alt=""
-          style={{ height: 72, width: "auto", marginBottom: 20 }}
-          onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "block"; }}
-        />
-        <div style={{ fontSize: 56, marginBottom: 16, display: "none" }}>🏪</div>
-
-        <div style={{ fontSize: 34, fontWeight: 700, color: L.text, marginBottom: 12, letterSpacing: -0.8 }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "64px 24px 28px", textAlign: "center" }}>
+        <div style={{ fontSize: 36, fontWeight: 700, color: L.text, marginBottom: 12, letterSpacing: -0.8 }}>
           Hoş geldin, <span style={{ color: L.accent }}>{profile?.name?.split(" ")[0]}</span>
         </div>
         <div style={{ fontSize: 15, color: L.textMuted, lineHeight: 1.7, maxWidth: 560, margin: "0 auto" }}>
