@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { S } from "../shared/lib/theme";
 
@@ -8,6 +9,8 @@ const BAR = {
   text:        "#f1f5f9",
   textMuted:   "#cbd5e1",
   hoverBg:     "#3a4357",
+  menuBg:      "#252b3b",
+  menuItemHover: "#323a4f",
 };
 
 const barBtn = {
@@ -24,7 +27,30 @@ const barBtn = {
 
 export function AppShell({ app, profile, onLogout, onOpenSettings, onOpenEditProfile, children }) {
   const navigate = useNavigate();
-  const firstName = profile?.name?.split(" ")[0] || "";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const firstName = profile?.name?.split(" ")[0] || "K";
+  const initial = firstName.charAt(0).toUpperCase();
+
+  // Click outside to close menu
+  useEffect(() => {
+    function handler(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    }
+    if (menuOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const menuItem = {
+    padding: "10px 16px",
+    fontSize: 13,
+    color: BAR.text,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    transition: "background 0.12s",
+  };
 
   return (
     <div style={{ fontFamily: "'Segoe UI',sans-serif", background: S.bg, minHeight: "100vh", color: S.text }}>
@@ -70,26 +96,94 @@ export function AppShell({ app, profile, onLogout, onOpenSettings, onOpenEditPro
           </div>
         </div>
 
-        {/* Right: user actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          <div className="user-chip" style={{
-            background: "rgba(255,255,255,0.10)", color: BAR.text, borderRadius: 20,
-            padding: "4px 12px", fontSize: 12, fontWeight: 600,
-            border: `1px solid ${BAR.border}`,
-            maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            <span className="user-fullname">{profile?.name}</span>
-            <span className="user-firstname" style={{ display: "none" }}>{firstName}</span>
-          </div>
-          <button onClick={onOpenSettings} title="Şifre Değiştir" style={{ ...barBtn, padding: "5px 9px", fontSize: 14 }}
-            onMouseEnter={e => e.currentTarget.style.background = BAR.hoverBg}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>🔑</button>
-          <button onClick={onOpenEditProfile} title="Profili Düzenle" style={{ ...barBtn, padding: "5px 9px", fontSize: 12 }}
-            onMouseEnter={e => e.currentTarget.style.background = BAR.hoverBg}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>✏️</button>
-          <button onClick={onLogout} style={{ ...barBtn, padding: "5px 11px" }}
-            onMouseEnter={e => e.currentTarget.style.background = BAR.hoverBg}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>Çıkış</button>
+        {/* Right: profile dropdown */}
+        <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: menuOpen ? BAR.hoverBg : "transparent",
+              border: `1px solid ${menuOpen ? S.accent + "66" : BAR.border}`,
+              padding: "3px 6px 3px 3px", borderRadius: 24,
+              cursor: "pointer", transition: "all 0.15s",
+            }}
+            onMouseEnter={e => !menuOpen && (e.currentTarget.style.background = BAR.hoverBg)}
+            onMouseLeave={e => !menuOpen && (e.currentTarget.style.background = "transparent")}
+          >
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: S.accent, color: "white",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 13, fontWeight: 700, flexShrink: 0,
+            }}>{initial}</div>
+            <span className="appshell-username" style={{
+              fontSize: 12, fontWeight: 600, color: BAR.text,
+              paddingRight: 4, maxWidth: 90,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{firstName}</span>
+            <span className="appshell-chevron" style={{ fontSize: 9, color: BAR.textMuted, paddingRight: 6 }}>▼</span>
+          </button>
+
+          {menuOpen && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 6px)", right: 0,
+              background: BAR.menuBg, borderRadius: 12,
+              border: `1px solid ${BAR.border}`,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3)",
+              minWidth: 220, overflow: "hidden", zIndex: 100,
+            }}>
+              {/* Header */}
+              <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${BAR.border}`, background: S.accent + "11" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: BAR.text, marginBottom: 2 }}>{profile?.name}</div>
+                <div style={{ fontSize: 11, color: BAR.textMuted, display: "flex", alignItems: "center", gap: 5 }}>
+                  📍 {profile?.store}
+                  {profile?.role === "admin" && (
+                    <span style={{ padding: "1px 7px", background: "#fef3c733", color: "#fcd34d", borderRadius: 8, fontSize: 9, fontWeight: 700, border: "1px solid #fcd34d55", marginLeft: 4 }}>ADMIN</span>
+                  )}
+                </div>
+              </div>
+              {/* Items */}
+              <div
+                style={{ ...menuItem }}
+                onClick={() => { setMenuOpen(false); onOpenEditProfile(); }}
+                onMouseEnter={e => e.currentTarget.style.background = BAR.menuItemHover}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontSize: 14 }}>✏️</span>
+                <span>Profili Düzenle</span>
+              </div>
+              <div
+                style={{ ...menuItem }}
+                onClick={() => { setMenuOpen(false); onOpenSettings(); }}
+                onMouseEnter={e => e.currentTarget.style.background = BAR.menuItemHover}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontSize: 14 }}>🔑</span>
+                <span>Şifre Değiştir</span>
+              </div>
+              {profile?.role === "admin" && (
+                <div
+                  style={{ ...menuItem }}
+                  onClick={() => { setMenuOpen(false); navigate("/admin"); }}
+                  onMouseEnter={e => e.currentTarget.style.background = BAR.menuItemHover}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <span style={{ fontSize: 14 }}>👥</span>
+                  <span>Kullanıcı Yönetimi</span>
+                </div>
+              )}
+              <div style={{ borderTop: `1px solid ${BAR.border}` }} />
+              <div
+                style={{ ...menuItem, color: "#f87171" }}
+                onClick={() => { setMenuOpen(false); onLogout(); }}
+                onMouseEnter={e => e.currentTarget.style.background = "#7f1d1d22"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontSize: 14 }}>🚪</span>
+                <span style={{ fontWeight: 600 }}>Çıkış Yap</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
