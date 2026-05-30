@@ -3,7 +3,7 @@ import { supabase } from "../../shared/lib/supabase";
 import { S, inputStyle, btnPrimary, btnSecondary } from "../../shared/lib/theme";
 import { REYONLAR, URUN_GRUPLARI, MARKALAR, KATEGORILER, MAGAZALAR, KAT_BORDER } from "../../shared/lib/constants";
 import { fmt } from "../../shared/lib/utils";
-import { Badge, SearchSelect, SimpleSelect, ProductScanner } from "../../shared/components";
+import { Badge, SmallSelect, SearchSelect, SimpleSelect, ProductScanner } from "../../shared/components";
 
 async function loadCatalogFiltered(field, reyon, grup) {
   let q = supabase.from("catalog_products").select(field);
@@ -50,6 +50,9 @@ export function UrunYorumlari({ profile }) {
   const [scannerMode, setScannerMode]       = useState("smart"); // "smart" (main page) or "fill" (add modal)
   const [newProdPhoto, setNewProdPhoto]     = useState(null);
   const [newProdPhotoPreview, setNewProdPhotoPreview] = useState(null);
+
+  // Mobile filters (sidebar gizliyken kullanılır)
+  const [mFilter, setMFilter]               = useState({ reyon: "", grup: "", marka: "" });
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2800); };
 
@@ -298,6 +301,43 @@ export function UrunYorumlari({ profile }) {
                 </button>
               </div>
             </div>
+            {/* Mobil filtreler — sadece mobilde görünür (CSS), desktopta sidebar zaten var */}
+            <div className="mobile-filters" style={{ display: "none", marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: S.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Reyon</div>
+                  <SmallSelect
+                    options={["Tümü", ...[...new Set(products.map(p => p.reyon).filter(Boolean))].sort()]}
+                    value={mFilter.reyon || "Tümü"}
+                    onChange={v => setMFilter({ reyon: v === "Tümü" ? "" : v, grup: "", marka: "" })}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: S.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Grup</div>
+                  <SmallSelect
+                    options={["Tümü", ...[...new Set(products.filter(p => !mFilter.reyon || p.reyon === mFilter.reyon).map(p => p.urun_grubu).filter(Boolean))].sort()]}
+                    value={mFilter.grup || "Tümü"}
+                    onChange={v => setMFilter(f => ({ ...f, grup: v === "Tümü" ? "" : v, marka: "" }))}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: S.textDim, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Marka</div>
+                  <SmallSelect
+                    options={["Tümü", ...[...new Set(products
+                      .filter(p => (!mFilter.reyon || p.reyon === mFilter.reyon) && (!mFilter.grup || p.urun_grubu === mFilter.grup))
+                      .map(p => p.marka).filter(Boolean))].sort()]}
+                    value={mFilter.marka || "Tümü"}
+                    onChange={v => setMFilter(f => ({ ...f, marka: v === "Tümü" ? "" : v }))}
+                  />
+                </div>
+              </div>
+              {(mFilter.reyon || mFilter.grup || mFilter.marka) && (
+                <button
+                  onClick={() => setMFilter({ reyon: "", grup: "", marka: "" })}
+                  style={{ background: "none", border: "none", color: S.accent, fontSize: 11, cursor: "pointer", padding: "4px 0 0 0" }}
+                >× Filtreleri temizle</button>
+              )}
+            </div>
             <div style={{ position: "relative", marginBottom: 24 }}>
               <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: S.textDim }}>🔍</div>
               <input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Ürün kodu, marka veya açıklama ara..." style={{ ...inputStyle, paddingLeft: 42, borderColor: productSearch ? S.accent : S.inputBorder }} />
@@ -305,9 +345,17 @@ export function UrunYorumlari({ profile }) {
             </div>
             {(() => {
               const q = productSearch.toLowerCase();
+              // Mobil filtreleri uygula
+              const base = products.filter(p =>
+                (!mFilter.reyon || p.reyon === mFilter.reyon) &&
+                (!mFilter.grup || p.urun_grubu === mFilter.grup) &&
+                (!mFilter.marka || p.marka === mFilter.marka)
+              );
               const filtered = productSearch
-                ? products.filter(p => p.code.toLowerCase().includes(q) || (p.marka || "").toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q) || (p.urun_grubu || "").toLowerCase().includes(q))
-                : [...products].sort((a, b) => productCommentCount(b.id) - productCommentCount(a.id)).slice(0, 12);
+                ? base.filter(p => p.code.toLowerCase().includes(q) || (p.marka || "").toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q) || (p.urun_grubu || "").toLowerCase().includes(q))
+                : (mFilter.reyon || mFilter.grup || mFilter.marka)
+                  ? base
+                  : [...base].sort((a, b) => productCommentCount(b.id) - productCommentCount(a.id)).slice(0, 12);
               if (products.length === 0) return (
                 <div style={{ textAlign: "center", color: S.textDim, padding: "60px 0" }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
@@ -330,7 +378,11 @@ export function UrunYorumlari({ profile }) {
               return (
                 <>
                   <div style={{ fontSize: 12, color: S.textDim, marginBottom: 12 }}>
-                    {productSearch ? `${filtered.length} sonuç bulundu` : `En çok yorumlanan ürünler — ${products.length} ürün sistemde`}
+                    {productSearch
+                      ? `${filtered.length} sonuç bulundu`
+                      : (mFilter.reyon || mFilter.grup || mFilter.marka)
+                        ? `${filtered.length} ürün — filtreli`
+                        : `En çok yorumlanan ürünler — ${products.length} ürün sistemde`}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 12 }}>
                     {filtered.map(p => {

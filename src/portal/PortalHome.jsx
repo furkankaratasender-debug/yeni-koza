@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { APPS } from "./appRegistry";
 
@@ -15,23 +16,37 @@ const L = {
   accentLight: "#eaf0ff",
   shadow:      "0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)",
   shadowHover: "0 10px 30px rgba(15,23,42,0.10), 0 4px 8px rgba(15,23,42,0.06)",
-};
-
-const btnLight = {
-  background: "white",
-  color: L.textMuted,
-  border: `1px solid ${L.border}`,
-  padding: "7px 12px",
-  borderRadius: 8,
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: "pointer",
-  transition: "all 0.15s",
+  shadowMenu:  "0 12px 40px rgba(15,23,42,0.12), 0 4px 12px rgba(15,23,42,0.06)",
 };
 
 export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfile }) {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const visibleApps = APPS.filter(a => !a.hidden && (!a.adminOnly || profile?.role === "admin"));
+
+  // Click outside to close menu
+  useEffect(() => {
+    function handler(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    }
+    if (menuOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const firstName = profile?.name?.split(" ")[0] || "K";
+  const initial = firstName.charAt(0).toUpperCase();
+
+  const menuItem = {
+    padding: "10px 16px",
+    fontSize: 13,
+    color: L.text,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    transition: "background 0.12s",
+  };
 
   return (
     <div style={{ fontFamily: "'Segoe UI',sans-serif", background: L.bgGradient, minHeight: "100vh", color: L.text }}>
@@ -43,7 +58,6 @@ export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfil
         boxShadow: L.shadow,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Logo: önce /logo.png varsa onu, yoksa emoji fallback */}
           <img
             src="/logo.png"
             alt="Yeni Koza"
@@ -52,36 +66,104 @@ export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfil
           />
           <span style={{ fontSize: 22, display: "none" }}>🏪</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div className="portal-user-chip" style={{
-            background: L.accentLight, color: L.accent, borderRadius: 20,
-            padding: "5px 12px", fontSize: 12, fontWeight: 600,
-            border: `1px solid ${L.accent}22`,
-            maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>{profile?.name}</div>
-          <button onClick={onOpenSettings} title="Şifre Değiştir" style={{ ...btnLight, padding: "6px 10px", fontSize: 14 }}>🔑</button>
-          <button onClick={onOpenEditProfile} title="Profili Düzenle" style={{ ...btnLight, padding: "6px 10px", fontSize: 12 }}>✏️</button>
-          <button onClick={onLogout} style={{ ...btnLight, padding: "6px 12px" }}>Çıkış</button>
+
+        {/* Profile dropdown */}
+        <div ref={menuRef} style={{ position: "relative" }}>
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: menuOpen ? L.accentLight : "transparent",
+              border: `1px solid ${menuOpen ? L.accent + "55" : L.border}`,
+              padding: "4px 6px 4px 4px", borderRadius: 24,
+              cursor: "pointer", transition: "all 0.15s",
+            }}
+            onMouseEnter={e => !menuOpen && (e.currentTarget.style.background = L.accentLight + "55")}
+            onMouseLeave={e => !menuOpen && (e.currentTarget.style.background = "transparent")}
+          >
+            <div style={{
+              width: 30, height: 30, borderRadius: "50%",
+              background: L.accent, color: "white",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 13, fontWeight: 700, flexShrink: 0,
+            }}>{initial}</div>
+            <span style={{
+              fontSize: 12, fontWeight: 600, color: L.text,
+              paddingRight: 4, maxWidth: 100,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{firstName}</span>
+            <span style={{ fontSize: 9, color: L.textDim, paddingRight: 6 }}>▼</span>
+          </button>
+
+          {menuOpen && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 6px)", right: 0,
+              background: "white", borderRadius: 12,
+              border: `1px solid ${L.border}`, boxShadow: L.shadowMenu,
+              minWidth: 220, overflow: "hidden", zIndex: 100,
+            }}>
+              {/* Header */}
+              <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${L.border}`, background: L.accentLight + "55" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: L.text, marginBottom: 2 }}>{profile?.name}</div>
+                <div style={{ fontSize: 11, color: L.textMuted, display: "flex", alignItems: "center", gap: 5 }}>
+                  📍 {profile?.store}
+                  {profile?.role === "admin" && (
+                    <span style={{ padding: "1px 7px", background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: 9, fontWeight: 700, border: "1px solid #fcd34d", marginLeft: 4 }}>ADMIN</span>
+                  )}
+                </div>
+              </div>
+              {/* Items */}
+              <div
+                style={{ ...menuItem }}
+                onClick={() => { setMenuOpen(false); onOpenEditProfile(); }}
+                onMouseEnter={e => e.currentTarget.style.background = L.cardHover}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontSize: 14 }}>✏️</span>
+                <span>Profili Düzenle</span>
+              </div>
+              <div
+                style={{ ...menuItem }}
+                onClick={() => { setMenuOpen(false); onOpenSettings(); }}
+                onMouseEnter={e => e.currentTarget.style.background = L.cardHover}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontSize: 14 }}>🔑</span>
+                <span>Şifre Değiştir</span>
+              </div>
+              {profile?.role === "admin" && (
+                <div
+                  style={{ ...menuItem }}
+                  onClick={() => { setMenuOpen(false); navigate("/admin"); }}
+                  onMouseEnter={e => e.currentTarget.style.background = L.cardHover}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <span style={{ fontSize: 14 }}>👥</span>
+                  <span>Kullanıcı Yönetimi</span>
+                </div>
+              )}
+              <div style={{ borderTop: `1px solid ${L.border}` }} />
+              <div
+                style={{ ...menuItem, color: "#dc2626" }}
+                onClick={() => { setMenuOpen(false); onLogout(); }}
+                onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span style={{ fontSize: 14 }}>🚪</span>
+                <span style={{ fontWeight: 600 }}>Çıkış Yap</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Hero */}
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "64px 24px 28px", textAlign: "center" }}>
         <div style={{ fontSize: 36, fontWeight: 700, color: L.text, marginBottom: 12, letterSpacing: -0.8 }}>
-          Hoş geldin, <span style={{ color: L.accent }}>{profile?.name?.split(" ")[0]}</span>
+          Hoş geldin, <span style={{ color: L.accent }}>{firstName}</span>
         </div>
         <div style={{ fontSize: 15, color: L.textMuted, lineHeight: 1.7, maxWidth: 560, margin: "0 auto" }}>
           Mağaza yönetim uygulamalarına tek noktadan erişin. Bir uygulamaya tıklayarak başlayın.
-        </div>
-        <div style={{ marginTop: 14, fontSize: 13, color: L.textDim, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <span>📍 {profile?.store}</span>
-          {profile?.role === "admin" && (
-            <span style={{
-              padding: "3px 10px", background: "#fef3c7", color: "#92400e",
-              borderRadius: 10, fontSize: 11, fontWeight: 700,
-              border: "1px solid #fcd34d",
-            }}>ADMIN</span>
-          )}
         </div>
       </div>
 
@@ -115,7 +197,6 @@ export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfil
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              {/* Decorative gradient blob */}
               <div style={{
                 position: "absolute", top: -30, right: -30,
                 width: 110, height: 110, borderRadius: "50%",
@@ -142,15 +223,6 @@ export function PortalHome({ profile, onLogout, onOpenSettings, onOpenEditProfil
             </div>
           ))}
         </div>
-
-        {/* Admin button - sadece adminler için, dipte sade buton */}
-        {profile?.role === "admin" && (
-          <div style={{ marginTop: 28, textAlign: "center" }}>
-            <button onClick={() => navigate("/admin")} style={{ ...btnLight, padding: "10px 20px", fontSize: 13 }}>
-              👥 Kullanıcı Yönetimi
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Footer */}

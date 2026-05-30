@@ -59,6 +59,7 @@ function useGlobalStyles() {
         .product-app-container { display: block !important; height: auto !important; overflow: visible !important; }
         .product-tree-sidebar { display: none !important; }
         .product-main-content { padding: 14px !important; height: auto !important; }
+        .mobile-filters { display: block !important; }
       }
     `;
     document.head.appendChild(style);
