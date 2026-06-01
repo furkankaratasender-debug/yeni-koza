@@ -28,15 +28,19 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
   }
   function close() { reset(); onClose(); }
 
+  // Her yerde kullanmak için tek normalize fonksiyonu
+  function stripCode(s) {
+    return (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  }
+
   function extractCode(text) {
-    // 2X + letter + (- veya boşluk veya hiç) + 3-15 alfanümerik (tiresiz birleştirilir)
     const cleaned = text.replace(/[|]/g, "1").replace(/[oO](?=\d)/g, "0");
     const regex = /(2\d)\s*([A-Z])\s*[-\s]?\s*([A-Z0-9]{3,15})/gi;
     const matches = [];
     let m;
     while ((m = regex.exec(cleaned)) !== null) {
-      const code = `${m[1]}${m[2].toUpperCase()}${m[3].toUpperCase()}`;
-      if (!matches.includes(code)) matches.push(code);
+      const code = stripCode(`${m[1]}${m[2]}${m[3]}`);
+      if (code && !matches.includes(code)) matches.push(code);
     }
     return matches;
   }
@@ -57,8 +61,9 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
       setRawText(text);
       const codes = extractCode(text);
       if (codes.length > 0) {
-        setFoundCode(codes[0]);
-        setManualCode(codes[0]);
+        const clean = stripCode(codes[0]);
+        setFoundCode(clean);
+        setManualCode(clean);
         setStage("result");
       } else {
         setErrorMsg("Ürün kodu algılanamadı. Manuel düzeltebilir veya tekrar deneyebilirsin.");
@@ -72,8 +77,7 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
   }
 
   function confirm() {
-    // Tire ve boşlukları temizle, tek string yap
-    const code = manualCode.trim().toUpperCase().replace(/[-\s]/g, "");
+    const code = stripCode(manualCode);
     if (!code) return;
     onCodeDetected(code);
     close();
@@ -164,7 +168,7 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
               <div style={{ fontSize: 11, fontWeight: 700, color: S.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Ürün Kodu</div>
               <input
                 value={manualCode}
-                onChange={e => setManualCode(e.target.value.toUpperCase().replace(/[-\s]/g, ""))}
+                onChange={e => setManualCode(stripCode(e.target.value))}
                 placeholder="örn: 26YW21000019"
                 style={{
                   width: "100%", padding: "10px 14px",
