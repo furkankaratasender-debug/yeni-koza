@@ -29,13 +29,13 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
   function close() { reset(); onClose(); }
 
   function extractCode(text) {
-    // 2X + letter + (- veya boşluk veya hiç) + 3-10 alfanümerik
+    // 2X + letter + (- veya boşluk veya hiç) + 3-15 alfanümerik (tiresiz birleştirilir)
     const cleaned = text.replace(/[|]/g, "1").replace(/[oO](?=\d)/g, "0");
-    const regex = /(2\d)\s*([A-Z])\s*[-\s]?\s*([A-Z0-9]{3,10})/gi;
+    const regex = /(2\d)\s*([A-Z])\s*[-\s]?\s*([A-Z0-9]{3,15})/gi;
     const matches = [];
     let m;
     while ((m = regex.exec(cleaned)) !== null) {
-      const code = `${m[1]}${m[2].toUpperCase()}-${m[3].toUpperCase()}`;
+      const code = `${m[1]}${m[2].toUpperCase()}${m[3].toUpperCase()}`;
       if (!matches.includes(code)) matches.push(code);
     }
     return matches;
@@ -72,7 +72,8 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
   }
 
   function confirm() {
-    const code = manualCode.trim().toUpperCase();
+    // Tire ve boşlukları temizle, tek string yap
+    const code = manualCode.trim().toUpperCase().replace(/[-\s]/g, "");
     if (!code) return;
     onCodeDetected(code);
     close();
@@ -94,7 +95,7 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
         {stage === "idle" && (
           <>
             <div style={{ fontSize: 13, color: S.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
-              Ürün etiketinin fotoğrafını çek. Sistem ürün kodunu otomatik tanıyacak (örn: <code style={{ background: S.input, padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>26Y-12345</code>).
+              Ürün etiketinin fotoğrafını çek. Sistem ürün kodunu otomatik tanıyacak (örn: <code style={{ background: S.input, padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>26YW21000019</code>).
             </div>
             <label style={{
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -163,8 +164,8 @@ export function ProductScanner({ open, onClose, onCodeDetected }) {
               <div style={{ fontSize: 11, fontWeight: 700, color: S.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Ürün Kodu</div>
               <input
                 value={manualCode}
-                onChange={e => setManualCode(e.target.value.toUpperCase())}
-                placeholder="örn: 26Y-12345"
+                onChange={e => setManualCode(e.target.value.toUpperCase().replace(/[-\s]/g, ""))}
+                placeholder="örn: 26YW21000019"
                 style={{
                   width: "100%", padding: "10px 14px",
                   border: `1.5px solid ${S.inputBorder}`, borderRadius: 7,
